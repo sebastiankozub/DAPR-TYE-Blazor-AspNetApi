@@ -1,0 +1,102 @@
+﻿@page "/cars"
+
+<PageTitle>Cars</PageTitle>
+
+@using Frontend.Data
+
+@* inject WeatherForecastService ForecastService *@
+@inject DaprClient Dapr
+@inject IJSRuntime JsRuntime
+
+<h1>Cars</h1>
+
+<p>Fetching data from backend with Service Invocation.</p>
+
+@if (cars == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <p role="status">Rows selected <b>@i </b> this session.</p>
+
+    <div style="display: flex; align-items: center; margin-bottom: 16px">
+        <RadzenButton Click="@ClearSelection" Text="Clear Selection" />
+    </div>
+
+    <RadzenDataGrid @ref="carGrid"
+        AllowFiltering="true"             
+        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" 
+        AllowPaging="false" PageSize="14"
+        AllowSorting="true"
+        Data="@cars"
+        TItem="Car" 
+        ColumnWidth="100px"
+        SelectionMode="DataGridSelectionMode.Multiple" 
+        RowSelect="@RowSelected"
+        @bind-Value=@selectedCars 
+        LoadData="@LoadData"
+    >
+        <Columns>
+            <RadzenDataGridColumn TItem="Car" Property="Id" Title="Car No." />
+            <RadzenDataGridColumn TItem="Car" Property="Model" Title="Model" />
+            <RadzenDataGridColumn TItem="Car" Property="Name" Title="Name" />
+            <RadzenDataGridColumn TItem="Car" Property="Category" Title="Category" />
+            <RadzenDataGridColumn TItem="Car" Property="ProductionYear" Title="ProductionYear" />
+        </Columns>
+    </RadzenDataGrid>
+}
+
+@code {
+
+    RadzenDataGrid<Car>? carGrid;
+
+    Car[]? cars;
+    IList<Car>? selectedCars;
+    int i = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        cars = await Dapr.InvokeMethodAsync<Car[]>(HttpMethod.Get, "backend", "api/cars");
+
+        //var timer = new System.Timers.Timer(1700);
+        //timer.Elapsed += (x, y) => carGrid?.Reload();
+        //timer.AutoReset = true;
+        //timer.Enabled = true;
+    }
+
+    private void ClearSelection()
+    {
+        selectedCars = null;
+    }
+
+    private async void LoadData(LoadDataArgs args)
+    {
+        cars = await Dapr.InvokeMethodAsync<Car[]>(HttpMethod.Get, "backend", "api/cars");
+    }
+
+    private async void RowSelected(Car car)
+    {
+        i++;
+
+        selectedCars = selectedCars ?? new List<Car>();
+
+        if(selectedCars?.Count() == (cars?.Count() - 1)) // concat selected and selecting items and distinct by guid to have proper condition in here ;) 
+        {
+            var newCar = new Car
+            {
+                Id = Guid.NewGuid(),
+                Name = "Added",
+                Model = "with RowSelect",
+                ProductionYear = car.ProductionYear,
+                Category = car.Category
+            };
+
+            cars = cars?.AsEnumerable().Append(newCar).ToArray();
+
+            await Dapr.PublishEventAsync<Car>("pubsub", "CarTopic", newCar);
+        }
+    }
+}

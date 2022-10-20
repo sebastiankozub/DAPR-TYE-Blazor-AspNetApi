@@ -1,0 +1,33 @@
+# tye application configuration file
+# read all about it at https://github.com/dotnet/tye
+
+name: dapr-app
+extensions:
+- name: dapr
+  log-level: debug
+  components-path: "./components/"
+services:
+- name: frontend
+  project: Frontend/Frontend.csproj
+  bindings:
+  - port: 5005
+    protocol: http
+- name: backend
+  project: Backend/Backend.csproj
+  bindings:
+  - port: 5000
+    protocol: http 
+- name: postgres
+  image: postgres
+  env:
+  - name: POSTGRES_USER
+    value: root
+  - name: POSTGRES_PASSWORD
+    value: root
+  - name: POSTGRES_DB
+    value: test_db
+  bindings:
+  - port: 5432
+  volumes:
+  - name: postgres-storage
+    target: /var/lib/postgresql/data

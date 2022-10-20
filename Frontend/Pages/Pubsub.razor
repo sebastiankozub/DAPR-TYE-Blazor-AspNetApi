@@ -1,0 +1,35 @@
+﻿@page "/pubsub"
+
+@using Frontend.Data
+
+@inject DaprClient Dapr
+
+<PageTitle>PubSub</PageTitle>
+
+<h1>Adding cars with PubSub</h1>
+
+<p role="status">Added <b>@currentCount cars</b> this session.</p>
+
+<button class="btn btn-primary" @onclick="AddCarClicked">Add car!</button>
+
+@code {
+
+    private int currentCount = 0;
+
+    private async void AddCarClicked()
+    {
+        currentCount++;
+
+        var car = new Car
+            {
+                Id = Guid.NewGuid(),
+                Model = "Astra",
+                Name = "Klikany",
+                Category = "truck",
+                ProductionYear = 1666
+            };
+
+        await Dapr.PublishEventAsync<Car>("pubsub", "CarTopic", car);
+    }
+
+}
